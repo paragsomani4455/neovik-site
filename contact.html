@@ -39,7 +39,7 @@ async function loadContent(){
       const b=document.getElementById('badges');
       if (b) b.innerHTML = data.badges.map(function(x){ return '<span class="badge">'+ x +'</span>'; }).join('');
     }
-    const email = data.contact_email || 'info@theneovik.com';
+    const email = data.contact_email || 'parag@theneovik.com';
     document.querySelectorAll('[data-email]').forEach(function(a){a.setAttribute('href','mailto:'+email);});
     const emailTextEl = document.querySelector('[data-field="contact_email_text"]');
     if (emailTextEl) emailTextEl.textContent = email;
