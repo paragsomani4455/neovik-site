@@ -1,28 +1,11 @@
 {
-  "hero_title": "Strategic finance for founders & operators.",
-  "hero_tagline": "FP&A, fundraising support, market research, and investor\u2011ready pitch decks. Practical, model\u2011driven, no fluff.",
+  "hero_tagline": "FP&A, fundraising support, market research, and investor‑ready pitch decks. Practical, model‑driven, no fluff.",
+  "services_intro": "Fast, focused engagements designed for momentum.",
   "badges": [
-    "Early\u2011stage focus",
+    "Early‑stage focus",
     "Operator mindset",
     "Outcomes > decks"
   ],
-  "services_intro": "Fast, focused engagements designed for momentum.",
-  "services": [
-    {
-      "title": "Financial modeling & FP&A",
-      "desc": "3\u2011statement models, unit economics, runway, hiring plans, board packs."
-    },
-    {
-      "title": "Fundraising support",
-      "desc": "Investor narrative, deck build, data room checklist, target list."
-    },
-    {
-      "title": "Research & strategy",
-      "desc": "Market sizing, competitive landscapes, pricing & packaging, KPI design."
-    }
-  ],
-  "about_text": "Finance & Strategy operators who\u2019ve built models, raised rounds, and shipped plans in the real world.",
-  "work_intro": "A few anonymized examples of how we move the needle.",
   "work": [
     {
       "title": "SaaS seed round readiness",
@@ -33,6 +16,23 @@
       "desc": "Elasticity study + A/B pricing; 18% lift in contribution margin."
     }
   ],
+  "hero_title": "Business Plan, Pitch Deck and Fund Raise for Every New Age Startup",
+  "contact_copy": "Drop a line and we’ll respond quickly.",
   "contact_email": "info@theneovik.com",
-  "contact_copy": "Drop a line and we\u2019ll respond quickly."
+  "services": [
+    {
+      "title": "Financial modeling & FP&A",
+      "desc": "3‑statement models, unit economics, runway, hiring plans, board packs."
+    },
+    {
+      "title": "Fundraising support",
+      "desc": "Investor narrative, deck build, data room checklist, target list."
+    },
+    {
+      "title": "Research & strategy",
+      "desc": "Market sizing, competitive landscapes, pricing & packaging, KPI design."
+    }
+  ],
+  "work_intro": "A few anonymized examples of how we move the needle.",
+  "about_text": "Finance & Strategy operators who’ve built models, raised rounds, and shipped plans in the real world."
 }
