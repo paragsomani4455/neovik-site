@@ -6,18 +6,52 @@
   <title>Neovik Advisors — Strategic finance for founders</title>
   <meta name="description" content="Clarity in numbers. Action on insights. FP&A, investor narratives, pricing & unit economics."/>
   <link rel="stylesheet" href="style.css"/>
+
+  <style>
+    /* set the hero image (your Unsplash pick) */
+    :root{ --hero:url('https://source.unsplash.com/3fPXt37X6UQ/2000x1200'); }
+  </style>
+
   <script>
-  async function loadContent(){
-    try{
-      const res = await fetch('site.json?_='+Date.now()); const data = await res.json();
-      for (const [k,v] of Object.entries(data)){ const el = document.querySelector('[data-field="'+k+'"]'); if(el && typeof v==='string') el.textContent=v; }
-      if (Array.isArray(data.services)){ const wrap=document.getElementById('services-list'); if(wrap){ wrap.innerHTML=''; data.services.forEach(s=>{ const d=document.createElement('div'); d.className='card card--glass'; d.innerHTML=`<h3>${s.title||''}</h3><p>${s.desc||''}</p><a class="btn primary" href="services.html">Learn more</a>`; wrap.appendChild(d);});}}
-      if (Array.isArray(data.badges)){ const b=document.getElementById('badges'); if(b) b.innerHTML=data.badges.map(x=>`<span class="badge">${x}</span>`).join(''); }
-      const email=data.contact_email||'parag@theneovik.com';
-      document.querySelectorAll('[data-email]').forEach(a=>a.setAttribute('href','mailto:'+email));
-    }catch(e){ console.error(e); }
-  }
-  document.addEventListener('DOMContentLoaded', loadContent);
+    async function loadContent(){
+      try{
+        const res = await fetch('site.json?_='+Date.now());
+        const data = await res.json();
+
+        for (const [k,v] of Object.entries(data)){
+          const el = document.querySelector('[data-field="'+k+'"]');
+          if (el && typeof v==='string') el.textContent = v;
+        }
+
+        // services from CMS
+        if (Array.isArray(data.services)){
+          const wrap = document.getElementById('services-list');
+          if (wrap){
+            wrap.innerHTML='';
+            data.services.forEach(s=>{
+              const d=document.createElement('div');
+              d.className='card card--glass';
+              d.innerHTML=`<h3>${s.title||''}</h3><p>${s.desc||''}</p><a class="btn primary" href="services.html">Learn more</a>`;
+              wrap.appendChild(d);
+            });
+          }
+        }
+
+        // badges under hero
+        if (Array.isArray(data.badges)){
+          const b=document.getElementById('badges');
+          if (b) b.innerHTML=data.badges.map(x=>`<span class="badge">${x}</span>`).join('');
+        }
+
+        // email wiring
+        const email = data.contact_email || 'parag@theneovik.com';
+        document.querySelectorAll('[data-email]').forEach(a=>a.href='mailto:'+email);
+        const eText=document.querySelector('[data-field="contact_email_text"]');
+        if (eText) eText.textContent=email;
+
+      }catch(e){ console.error(e); }
+    }
+    document.addEventListener('DOMContentLoaded', loadContent);
   </script>
 </head>
 <body>
@@ -38,8 +72,8 @@
     </header>
   </div>
 
-  <!-- HERO (ultra-visual) -->
-  <section class="hero2" style="--hero:url('https://images.unsplash.com/photo-3fPXt37X6UQ?ixid=Mnwx&auto=format&fit=crop&w=2000&q=80')">
+  <!-- HERO -->
+  <section class="hero2">
     <div class="hero2__shade"></div>
     <div class="hero2__inner wrap">
       <div class="hero2__copy card card--glass">
@@ -54,7 +88,7 @@
     </div>
   </section>
 
-  <!-- MICRO-STATS (demo placeholders) -->
+  <!-- MICRO-STATS -->
   <section class="strip stats">
     <div class="wrap stats__inner">
       <div class="stat"><div class="stat__num">100+</div><div class="stat__lbl">Models built</div></div>
@@ -71,14 +105,14 @@
       <div class="card card--glass"><h3>Speed with depth</h3><p>Short sprints; high-leverage outputs you can use tomorrow.</p></div>
     </section>
 
-    <!-- SERVICES (from CMS) -->
+    <!-- SERVICES (CMS) -->
     <section class="section">
       <h2 style="margin:0 0 8px">What we do</h2>
       <p class="muted" data-field="services_intro">Fast, focused engagements designed for momentum.</p>
       <div id="services-list" class="grid"></div>
     </section>
 
-    <!-- TESTIMONIALS (global best-sites style) -->
+    <!-- TESTIMONIALS -->
     <section class="section">
       <h2>What founders say</h2>
       <div class="grid testimonials">
@@ -110,6 +144,7 @@
       © <span id="year"></span> Neovik Advisors • <a class="muted" href="mailto:parag@theneovik.com">parag@theneovik.com</a>
     </footer>
   </div>
+
   <script>document.getElementById('year').textContent=new Date().getFullYear();</script>
 </body>
 </html>
