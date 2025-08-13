@@ -5,24 +5,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Neovik Advisors — Strategic finance for founders</title>
   <meta name="description" content="Clarity in numbers. Action on insights. FP&A, investor narratives, pricing & unit economics."/>
-  <link rel="stylesheet" href="style.css"/>
-
-  <style>
-    /* set the hero image (your Unsplash pick) */
-    <section class="hero2" style="--hero:url('https://source.unsplash.com/3fPXt37X6UQ/2000x1200');">
+  <!-- cache-bust CSS -->
+  <link rel="stylesheet" href="style.css?v=6"/>
 
   <script>
+    // pulls text/lists from site.json so CMS edits show up
     async function loadContent(){
       try{
         const res = await fetch('site.json?_='+Date.now());
         const data = await res.json();
 
+        // simple fields
         for (const [k,v] of Object.entries(data)){
           const el = document.querySelector('[data-field="'+k+'"]');
           if (el && typeof v==='string') el.textContent = v;
         }
 
-        // services from CMS
+        // services list
         if (Array.isArray(data.services)){
           const wrap = document.getElementById('services-list');
           if (wrap){
@@ -30,7 +29,7 @@
             data.services.forEach(s=>{
               const d=document.createElement('div');
               d.className='card card--glass';
-              d.innerHTML=`<h3>${s.title||''}</h3><p>${s.desc||''}</p><a class="btn primary" href="services.html">Learn more</a>`;
+              d.innerHTML = `<h3>${s.title||''}</h3><p>${s.desc||''}</p><a class="btn primary" href="services.html">Learn more</a>`;
               wrap.appendChild(d);
             });
           }
@@ -39,15 +38,12 @@
         // badges under hero
         if (Array.isArray(data.badges)){
           const b=document.getElementById('badges');
-          if (b) b.innerHTML=data.badges.map(x=>`<span class="badge">${x}</span>`).join('');
+          if (b) b.innerHTML = data.badges.map(x=>`<span class="badge">${x}</span>`).join('');
         }
 
         // email wiring
         const email = data.contact_email || 'parag@theneovik.com';
         document.querySelectorAll('[data-email]').forEach(a=>a.href='mailto:'+email);
-        const eText=document.querySelector('[data-field="contact_email_text"]');
-        if (eText) eText.textContent=email;
-
       }catch(e){ console.error(e); }
     }
     document.addEventListener('DOMContentLoaded', loadContent);
@@ -57,7 +53,8 @@
   <div class="wrap">
     <header>
       <div class="brand">
-        <img src="Logo-PNG.jpg" alt="Neovik" class="logo">
+        <!-- your uploaded file name -->
+        <img src="Logo PNG.jpg" alt="Neovik" class="logo">
         <strong>Neovik Advisors</strong>
       </div>
       <nav>
@@ -71,8 +68,8 @@
     </header>
   </div>
 
-  <!-- HERO -->
-  <section class="hero2">
+  <!-- HERO with forced background (your Unsplash pick) -->
+  <section class="hero2" style="--hero:url('https://source.unsplash.com/3fPXt37X6UQ/2000x1200');">
     <div class="hero2__shade"></div>
     <div class="hero2__inner wrap">
       <div class="hero2__copy card card--glass">
@@ -104,7 +101,7 @@
       <div class="card card--glass"><h3>Speed with depth</h3><p>Short sprints; high-leverage outputs you can use tomorrow.</p></div>
     </section>
 
-    <!-- SERVICES (CMS) -->
+    <!-- SERVICES (from CMS) -->
     <section class="section">
       <h2 style="margin:0 0 8px">What we do</h2>
       <p class="muted" data-field="services_intro">Fast, focused engagements designed for momentum.</p>
