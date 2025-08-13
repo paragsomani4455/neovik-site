@@ -105,3 +105,5 @@ input:focus,textarea:focus{outline:0;border-color:#2b3143}
   min-height:62vh;
 }
 .hero2__shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.7))}
+.hero2{position:relative;background:var(--hero) center/cover no-repeat;min-height:62vh}
+.hero2__shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.7))}
