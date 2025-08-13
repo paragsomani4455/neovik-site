@@ -1,74 +1,178 @@
-<!doctype html> <!-- redeploy -->
-<html lang="en"><head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Home – Neovik Advisors</title>
-<link rel="stylesheet" href="style.css"/>
-<meta name="description" content="Neovik Advisors – Strategic finance & growth."/>
-<script>
-async function loadContent(){
-  try {
-    const res = await fetch('site.json?_='+Date.now());
-    const data = await res.json();
-    for (const [k,v] of Object.entries(data)) {
-      const el = document.querySelector('[data-field="'+k+'"]');
-      if (el && typeof v==='string') el.textContent = v;
-    }
-    if (Array.isArray(data.services)) {
-      const wrap = document.getElementById('services-list');
-      if (wrap) {
-        wrap.innerHTML='';
-        data.services.forEach(function(s){
-          const d=document.createElement('div');d.className='card';
-          d.innerHTML='<h3>'+ (s.title||'') +'</h3><p>'+ (s.desc||'') +'</p>';
-          wrap.appendChild(d);
-        });
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Neovik Advisors – Strategic finance for founders & operators</title>
+  <link rel="stylesheet" href="style.css"/>
+  <meta name="description" content="Finance & Strategy for founders: FP&A, fundraising, research, investor-ready narratives."/>
+  <script>
+  async function loadContent(){
+    try{
+      const res = await fetch('site.json?_='+Date.now());
+      const data = await res.json();
+      // simple text fields
+      for (const [k,v] of Object.entries(data)){
+        const el = document.querySelector('[data-field="'+k+'"]');
+        if (el && typeof v==='string') el.textContent = v;
       }
-    }
-    if (Array.isArray(data.work)) {
-      const wrap = document.getElementById('work-list');
-      if (wrap) {
-        wrap.innerHTML='';
-        data.work.forEach(function(w){
-          const d=document.createElement('div');d.className='card';
-          d.innerHTML='<h3>'+ (w.title||'') +'</h3><p>'+ (w.desc||'') +'</p>';
-          wrap.appendChild(d);
-        });
+      // services
+      if (Array.isArray(data.services)){
+        const wrap = document.getElementById('services-list');
+        if (wrap){
+          wrap.innerHTML='';
+          data.services.forEach(s=>{
+            const d=document.createElement('div');
+            d.className='card';
+            d.innerHTML = `<h3>${s.title||''}</h3><p>${s.desc||''}</p>`;
+            wrap.appendChild(d);
+          });
+        }
       }
-    }
-    if (Array.isArray(data.badges)) {
-      const b=document.getElementById('badges');
-      if (b) b.innerHTML = data.badges.map(function(x){ return '<span class="badge">'+ x +'</span>'; }).join('');
-    }
-    const email = data.contact_email || 'info@theneovik.com';
-    document.querySelectorAll('[data-email]').forEach(function(a){a.setAttribute('href','mailto:'+email);});
-    const emailTextEl = document.querySelector('[data-field="contact_email_text"]');
-    if (emailTextEl) emailTextEl.textContent = email;
-  } catch(e) { console.error(e); }
-}
-document.addEventListener('DOMContentLoaded', loadContent);
-</script>
+      // work
+      if (Array.isArray(data.work)){
+        const wrap = document.getElementById('work-list');
+        if (wrap){
+          wrap.innerHTML='';
+          data.work.forEach(w=>{
+            const d=document.createElement('div');
+            d.className='card';
+            d.innerHTML = `<h3>${w.title||''}</h3><p>${w.desc||''}</p>`;
+            wrap.appendChild(d);
+          });
+        }
+      }
+      // badges
+      if (Array.isArray(data.badges)){
+        const b=document.getElementById('badges');
+        if (b) b.innerHTML = data.badges.map(x=>`<span class="badge">${x}</span>`).join('');
+      }
+      // email links
+      const email = data.contact_email || 'parag@theneovik.com';
+      document.querySelectorAll('[data-email]').forEach(a=>a.setAttribute('href','mailto:'+email));
+      const emailTextEl = document.querySelector('[data-field="contact_email_text"]');
+      if (emailTextEl) emailTextEl.textContent = email;
+    }catch(e){ console.error(e); }
+  }
+  document.addEventListener('DOMContentLoaded', loadContent);
+  </script>
 </head>
-<body><div class="wrap">
-<header>
-  <div class="brand">
-  <img src="Logo PNG.jpg" alt="Neovik" class="logo">
-  <strong>Neovik Advisors</strong>
-</div>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-    <a href="services.html">Services</a>
-    <a href="work.html">Work</a>
-    <a href="contact.html">Contact</a>
-    <a href="/admin/">Admin</a>
-  </nav>
-</header>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <img src="/neovik-logo.png" alt="Neovik" class="logo">
+        <strong>Neovik Advisors</strong>
+      </div>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="services.html">Services</a>
+        <a href="work.html">Work</a>
+        <a href="contact.html">Contact</a>
+        <a href="/admin/">Admin</a>
+      </nav>
+    </header>
+  </div>
 
-<section class="hero">
-  <h1 data-field="hero_title">Strategic finance for founders & operators.</h1>
-  <p data-field="hero_tagline">FP&A, fundraising support, market research, and investor‑ready pitch decks.</p>
-  <p><a class="btn primary" data-email href="#">Talk to us</a></p>
-  <div id="badges"></div>
-</section>
-<section class="grid" id="services-list"></section>
-<footer>© 2025 Neovik Advisors</footer></div></body></html>
+  <!-- HERO -->
+  <section class="hero2" style="--hero:url('https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1800&q=80')">
+    <div class="hero2__shade"></div>
+    <div class="hero2__inner wrap">
+      <div class="hero2__copy card card--glass">
+        <h1 data-field="hero_title">Strategic finance for founders & operators.</h1>
+        <p class="lead" data-field="hero_tagline">FP&A, fundraising support, market research, and investor-ready pitch decks. Practical, model-driven, no fluff.</p>
+        <div id="badges" style="margin:8px 0 14px"></div>
+        <div class="cta">
+          <a class="btn primary" data-email href="#">Talk to us</a>
+          <a class="btn" href="services.html">See services</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <!-- TRUST STRIP -->
+    <section class="strip logos">
+      <span>Operator-grade outputs:</span>
+      <span>3-statement models</span>
+      <span>Investor narratives</span>
+      <span>Pricing & unit economics</span>
+      <span>Board packs</span>
+    </section>
+
+    <!-- VALUE PILLARS -->
+    <section class="grid section">
+      <div class="card">
+        <h3>Clarity over noise</h3>
+        <p>We frame the problem, align on drivers, and move decisions forward.</p>
+      </div>
+      <div class="card">
+        <h3>Investor-ready</h3>
+        <p>Numbers plus story: models that hold up, narratives that resonate.</p>
+      </div>
+      <div class="card">
+        <h3>Speed with depth</h3>
+        <p>Short, focused sprints; high-leverage deliverables you can use tomorrow.</p>
+      </div>
+    </section>
+
+    <!-- SERVICES PREVIEW (pulls from CMS) -->
+    <section class="section">
+      <h2 style="margin:0 0 8px">What we do</h2>
+      <p class="muted" data-field="services_intro">Fast, focused engagements designed for momentum.</p>
+      <div id="services-list" class="grid"></div>
+    </section>
+
+    <!-- CASE SNAPSHOTS -->
+    <section class="section">
+      <h2 style="margin:0 0 8px">Recent snapshots</h2>
+      <div class="grid">
+        <div class="card card--img">
+          <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80" alt="SaaS model">
+          <div class="card__body">
+            <h3>SaaS seed round readiness</h3>
+            <p>Tight unit economics model + narrative revision; term sheets in 3 weeks.</p>
+          </div>
+        </div>
+        <div class="card card--img">
+          <img src="https://images.unsplash.com/photo-1523875194681-bedd468c58bf?auto=format&fit=crop&w=1200&q=80" alt="Pricing">
+          <div class="card__body">
+            <h3>D2C pricing overhaul</h3>
+            <p>Elasticity study + A/B pricing; 18% lift in contribution margin.</p>
+          </div>
+        </div>
+        <div class="card card--img">
+          <img src="https://images.unsplash.com/photo-1551281044-8d8d08a31f3a?auto=format&fit=crop&w=1200&q=80" alt="Board pack">
+          <div class="card__body">
+            <h3>Board pack refresh</h3>
+            <p>Driver-based KPI design; cleaner cadence and better decisions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TESTIMONIAL -->
+    <section class="section">
+      <div class="quote card">
+        <p>“Neovik cut through noise, landed a credible model, and helped us close faster.”</p>
+        <div class="quote__meta">Founder, B2B SaaS</div>
+      </div>
+    </section>
+
+    <!-- CTA STRIP -->
+    <section class="cta-strip">
+      <div class="wrap cta-strip__inner">
+        <h3>Ready to move?</h3>
+        <p class="muted">Send context. We’ll reply fast.</p>
+        <a class="btn primary" data-email href="#">Start a conversation</a>
+      </div>
+    </section>
+
+    <footer>
+      © <span id="year"></span> Neovik Advisors • <a class="muted" href="mailto:parag@theneovik.com">parag@theneovik.com</a>
+    </footer>
+  </div>
+  <script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+</body>
+</html>
