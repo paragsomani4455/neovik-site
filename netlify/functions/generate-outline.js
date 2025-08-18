@@ -77,18 +77,18 @@ Return ONLY valid JSON.
 
   try {
     const resp = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        // New API shape: use instructions + input, and set text.format=json
-        instructions: system,
-        input: user,
-        text: { format: "json" },
-        temperature: 0.4,
-        max_output_tokens: 1100
-      })
-    });
+  method: "POST",
+  headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+  body: JSON.stringify({
+    model,
+    instructions: system,
+    input: user,
+    text: { format: { type: "json_object" } }, // <-- changed
+    temperature: 0.4,
+    max_output_tokens: 1100
+  })
+});
+
 
     if (!resp.ok) return { statusCode: 502, headers: cors(), body: `Upstream error: ${await resp.text()}` };
 
