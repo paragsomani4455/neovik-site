@@ -1,17 +1,17 @@
-// netlify/functions/generate-outline.js  (v2)
+// netlify/functions/generate-outline.js  (v3)
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: cors(), body: "" };
-  if (event.httpMethod !== "POST") return { statusCode: 405, headers: cors(), body: "Method Not Allowed" };
+  if (event.httpMethod !== "POST")   return { statusCode: 405, headers: cors(), body: "Method Not Allowed" };
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.MODEL || "gpt-5-mini";
+  const model  = process.env.MODEL || "gpt-5-mini";
   if (!apiKey) return { statusCode: 500, headers: cors(), body: "Missing OPENAI_API_KEY" };
 
   let input;
   try { input = JSON.parse(event.body || "{}"); } catch { return { statusCode: 400, headers: cors(), body: "Bad JSON" }; }
 
   const required = ["startup","one_liner","industry","target_user","problem","solution"];
-  const missing = required.filter(k => !String(input[k]||"").trim());
+  const missing  = required.filter(k => !String(input[k]||"").trim());
   if (missing.length) return { statusCode: 400, headers: cors(), body: `Missing: ${missing.join(", ")}` };
 
   const schema = `{
@@ -24,16 +24,14 @@ export async function handler(event) {
         "prompt_version": "v1",
         "created_at": "<ISO8601>"
       },
-      "slides": [
-        {
-          "id": 1,
-          "title": "<Title Case>",
-          "purpose": "<investor question this slide answers>",
-          "bullets": ["<12–20 words>", "<3–5 bullets total>"],
-          "visual": "<suggested chart/mock/layout>",
-          "proof_needed": ["<evidence item 1>", "<2–4 items>"]
-        }
-      ],
+      "slides": [{
+        "id": 1,
+        "title": "<Title Case>",
+        "purpose": "<investor question this slide answers>",
+        "bullets": ["<12–20 words>", "<3–5 bullets total>"],
+        "visual": "<suggested chart/mock/layout>",
+        "proof_needed": ["<evidence item 1>", "<2–4 items>"]
+      }],
       "proof_todos": ["<global TODOs founders must supply>"],
       "warnings": ["<any caveats or missing info>"]
     }
@@ -41,15 +39,13 @@ export async function handler(event) {
 
   const system = `
 You are “Neovik Deck Co-Author”: a seed-stage investor-grade deck outliner.
-Return ONLY valid JSON matching the provided schema. No prose, no markdown.
-Rules:
-- 12 slides max, 10–12 ideal. Each slide answers a real investor question.
-- 3–5 bullets/slide, each 12–20 words. No fluff, no buzzword stacking.
-- Do NOT invent numbers or names. If data is missing, add precise proof_needed and a global proof_todos entry (e.g., "Bottom-up TAM: price × buyer count with cited source").
-- Seed bar: prove pull, wedge, path to revenue in 12–18 months. Design secondary to evidence.
-- Titles in Title Case. Visual suggests a concrete layout (e.g., “cohort chart”, “bottom-up calc table”).
-- Keep language crisp and McKinsey/Goldman tone.
-- Schema fields must be present even if arrays are empty.
+Return ONLY valid JSON per the schema. No prose, no markdown.
+- 10–12 slides. Each slide answers a real investor question.
+- 3–5 bullets/slide (12–20 words each). No fluff.
+- Do NOT invent numbers or names. If missing, add precise proof_needed and global proof_todos.
+- Seed bar: prove pull, wedge, path to revenue in 12–18 months.
+- Titles in Title Case. Visuals are concrete (e.g., "cohort chart").
+- Keep tone crisp (McKinsey/Goldman). All schema fields must exist.
 `;
 
   const user = `
@@ -73,7 +69,7 @@ ask_use: ${input.ask_use || ""}
 tone: ${input.tone || "crisp"}
 
 TASK:
-Using the SCHEMA and rules, produce a 12-slide outline for seed investors.
+Produce a 12-slide outline for seed investors.
 Each slide: title, purpose, 3–5 bullets, visual, and 2–4 proof_needed.
 Aggregate the most critical missing evidence into proof_todos (max 8).
 Return ONLY valid JSON.
@@ -85,11 +81,9 @@ Return ONLY valid JSON.
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
-        input: [
-          { role: "system", content: [{ type: "text", text: system }] },
-          { role: "user",   content: [{ type: "text", text: user }] }
-        ],
-        // NEW: response_format moved under "text.format"
+        // New API shape: use instructions + input, and set text.format=json
+        instructions: system,
+        input: user,
         text: { format: "json" },
         temperature: 0.4,
         max_output_tokens: 1100
@@ -99,18 +93,14 @@ Return ONLY valid JSON.
     if (!resp.ok) return { statusCode: 502, headers: cors(), body: `Upstream error: ${await resp.text()}` };
 
     const data = await resp.json();
-    const text = data?.output_text || data?.output?.[0]?.content?.[0]?.text || "";
+    const text = data?.output_text || "";
     if (!text) return { statusCode: 502, headers: cors(), body: "Empty model output" };
 
     let json;
     try { json = JSON.parse(text); } catch { return { statusCode: 502, headers: cors(), body: "Model did not return valid JSON" }; }
     if (json.deck?.meta) json.deck.meta.created_at = new Date().toISOString();
 
-    return {
-      statusCode: 200,
-      headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" },
-      body: JSON.stringify(json)
-    };
+    return { statusCode: 200, headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" }, body: JSON.stringify(json) };
   } catch (e) {
     return { statusCode: 500, headers: cors(), body: `Server error: ${e.message}` };
   }
