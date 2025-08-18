@@ -1,4 +1,4 @@
-// netlify/functions/generate-outline.js  (v3)
+// netlify/functions/generate-outline.js  (v4)
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: cors(), body: "" };
   if (event.httpMethod !== "POST")   return { statusCode: 405, headers: cors(), body: "Method Not Allowed" };
@@ -8,7 +8,8 @@ export async function handler(event) {
   if (!apiKey) return { statusCode: 500, headers: cors(), body: "Missing OPENAI_API_KEY" };
 
   let input;
-  try { input = JSON.parse(event.body || "{}"); } catch { return { statusCode: 400, headers: cors(), body: "Bad JSON" }; }
+  try { input = JSON.parse(event.body || "{}"); } 
+  catch { return { statusCode: 400, headers: cors(), body: "Bad JSON" }; }
 
   const required = ["startup","one_liner","industry","target_user","problem","solution"];
   const missing  = required.filter(k => !String(input[k]||"").trim());
@@ -77,32 +78,61 @@ Return ONLY valid JSON.
 
   try {
     const resp = await fetch("https://api.openai.com/v1/responses", {
-  method: "POST",
-  headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-  body: JSON.stringify({
-    model,
-    instructions: system,
-    input: user,
-    text: { format: { type: "json_object" } }, // <-- changed
-    max_output_tokens: 1100
-  })
-});
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        instructions: system,
+        input: user,
+        // Structured output (new Responses API shape)
+        text: { format: { type: "json_object" } },
+        max_output_tokens: 1100
+      })
+    });
 
-
-    if (!resp.ok) return { statusCode: 502, headers: cors(), body: `Upstream error: ${await resp.text()}` };
+    if (!resp.ok) {
+      const msg = await resp.text();
+      return { statusCode: 502, headers: cors(), body: `Upstream error: ${msg}` };
+    }
 
     const data = await resp.json();
-    const text = data?.output_text || "";
-    if (!text) return { statusCode: 502, headers: cors(), body: "Empty model output" };
+    const text = extractText(data);
+    if (!text) {
+      return {
+        statusCode: 502,
+        headers: cors(),
+        body: "Upstream (no text): " + JSON.stringify(data).slice(0, 1500)
+      };
+    }
 
     let json;
-    try { json = JSON.parse(text); } catch { return { statusCode: 502, headers: cors(), body: "Model did not return valid JSON" }; }
+    try { json = JSON.parse(text); }
+    catch { return { statusCode: 502, headers: cors(), body: "Model returned non-JSON text: " + text.slice(0, 500) }; }
+
     if (json.deck?.meta) json.deck.meta.created_at = new Date().toISOString();
 
-    return { statusCode: 200, headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" }, body: JSON.stringify(json) };
+    return {
+      statusCode: 200,
+      headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" },
+      body: JSON.stringify(json)
+    };
   } catch (e) {
     return { statusCode: 500, headers: cors(), body: `Server error: ${e.message}` };
   }
+}
+
+function extractText(d) {
+  if (!d) return "";
+  if (typeof d.output_text === "string" && d.output_text.trim()) return d.output_text;
+  if (Array.isArray(d.output) && Array.isArray(d.output[0]?.content)) {
+    for (const c of d.output[0].content) {
+      if (typeof c.text === "string" && c.text.trim()) return c.text;
+      if (c.type === "output_text" && typeof c.output_text === "string" && c.output_text.trim()) return c.output_text;
+    }
+  }
+  const ch = d.choices?.[0]?.message?.content;
+  if (typeof ch === "string" && ch.trim()) return ch;
+  return "";
 }
 
 function cors(){
