@@ -84,7 +84,6 @@ Return ONLY valid JSON.
     instructions: system,
     input: user,
     text: { format: { type: "json_object" } }, // <-- changed
-    temperature: 0.4,
     max_output_tokens: 1100
   })
 });
