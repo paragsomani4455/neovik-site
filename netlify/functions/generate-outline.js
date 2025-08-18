@@ -1,19 +1,22 @@
-// netlify/functions/generate-outline.js  (v5 with auto-compact retry)
+// netlify/functions/generate-outline.js  (v6: health GET + clearer errors)
 export async function handler(event) {
+  // Health check (open in browser to verify function works)
+  if (event.httpMethod === "GET") {
+    return json(200, { ok: true, version: "v6", model: process.env.MODEL || "gpt-5-mini", hasKey: !!process.env.OPENAI_API_KEY });
+  }
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: cors(), body: "" };
-  if (event.httpMethod !== "POST")   return { statusCode: 405, headers: cors(), body: "Method Not Allowed" };
+  if (event.httpMethod !== "POST")   return text(405, "Method Not Allowed");
 
   const apiKey = process.env.OPENAI_API_KEY;
   const model  = process.env.MODEL || "gpt-5-mini";
-  if (!apiKey) return { statusCode: 500, headers: cors(), body: "Missing OPENAI_API_KEY" };
+  if (!apiKey) return text(500, "Missing OPENAI_API_KEY");
 
   let input;
-  try { input = JSON.parse(event.body || "{}"); } 
-  catch { return { statusCode: 400, headers: cors(), body: "Bad JSON" }; }
+  try { input = JSON.parse(event.body || "{}"); } catch { return text(400, "Bad JSON"); }
 
   const required = ["startup","one_liner","industry","target_user","problem","solution"];
-  const missing  = required.filter(k => !String(input[k]||"").trim());
-  if (missing.length) return { statusCode: 400, headers: cors(), body: `Missing: ${missing.join(", ")}` };
+  const miss = required.filter(k => !String(input[k]||"").trim());
+  if (miss.length) return text(400, `Missing: ${miss.join(", ")}`);
 
   const schema = `{
     "deck": {
@@ -24,7 +27,7 @@ export async function handler(event) {
     }
   }`;
 
-  const baseSystem = `
+  const system = `
 You are “Neovik Deck Co-Author”: a seed-stage investor-grade deck outliner.
 Return ONLY valid JSON per the schema. No prose, no markdown.
 - 10–12 slides. Each slide answers a real investor question.
@@ -35,7 +38,7 @@ Return ONLY valid JSON per the schema. No prose, no markdown.
 - Keep tone crisp (McKinsey/Goldman). All schema fields must exist.
 `;
 
-  const founderInput = `
+  const user = `
 SCHEMA:
 ${schema}
 
@@ -63,62 +66,44 @@ Return ONLY valid JSON.
 `;
 
   try {
-    // Try full version first (higher token cap)
-    let data = await call(model, baseSystem, founderInput, 2000);
-    if (data.status === "incomplete" && data.incomplete_details?.reason === "max_output_tokens") {
-      // Retry compact version
-      const compactSystem = baseSystem + `
-COMPACT MODE:
-- Hard cap 10–11 slides.
-- 3–4 bullets per slide, tighter phrasing.
-- Prefer warnings/proof_todos over long bullets.
-`;
-      data = await call(model, compactSystem, founderInput, 1400);
-    }
+    const upstream = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        instructions: system,
+        input: user,
+        text: { format: { type: "json_object" } },
+        max_output_tokens: 2000
+      })
+    });
 
-    const text = extractText(data);
-    if (!text) {
-      return { statusCode: 502, headers: cors(), body: "Upstream (no text): " + JSON.stringify(data).slice(0, 1500) };
-    }
+    if (!upstream.ok) return text(502, `Upstream error: ${await upstream.text()}`);
 
-    let json;
-    try { json = JSON.parse(text); }
-    catch { return { statusCode: 502, headers: cors(), body: "Model returned non-JSON text: " + text.slice(0, 500) }; }
+    const data = await upstream.json();
+    const out = extractText(data);
+    if (!out) return text(502, "Upstream (no text): " + JSON.stringify(data).slice(0, 1500));
 
-    if (json.deck?.meta) json.deck.meta.created_at = new Date().toISOString();
+    let parsed;
+    try { parsed = JSON.parse(out); }
+    catch { return text(502, "Model returned non-JSON text: " + out.slice(0, 500)); }
 
-    return { statusCode: 200, headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" }, body: JSON.stringify(json) };
+    if (parsed.deck?.meta) parsed.deck.meta.created_at = new Date().toISOString();
+    return json(200, parsed);
   } catch (e) {
-    return { statusCode: 500, headers: cors(), body: `Server error: ${e.message}` };
+    return text(500, `Server error: ${e.message || e}`);
   }
-}
-
-async function call(model, instructions, input, maxTokens){
-  const resp = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      instructions,
-      input,
-      text: { format: { type: "json_object" } },
-      max_output_tokens: maxTokens
-    })
-  });
-  if (!resp.ok) {
-    const msg = await resp.text();
-    throw new Error(`Upstream error: ${msg}`);
-  }
-  return await resp.json();
 }
 
 function extractText(d) {
   if (!d) return "";
   if (typeof d.output_text === "string" && d.output_text.trim()) return d.output_text;
-  if (Array.isArray(d.output) && Array.isArray(d.output[0]?.content)) {
-    for (const c of d.output[0].content) {
+  const oc = d.output && Array.isArray(d.output[0]?.content) ? d.output[0].content : null;
+  if (oc) {
+    for (const c of oc) {
       if (typeof c.text === "string" && c.text.trim()) return c.text;
       if (c.type === "output_text" && typeof c.output_text === "string" && c.output_text.trim()) return c.output_text;
+      if (c.type === "refusal" && c.refusal) return JSON.stringify({ error: "refusal", detail: c.refusal });
     }
   }
   const ch = d.choices?.[0]?.message?.content;
@@ -126,10 +111,10 @@ function extractText(d) {
   return "";
 }
 
-function cors(){
-  return {
-    "Access-Control-Allow-Origin": "https://theneovik.com",
-    "Access-Control-Allow-Methods": "POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type"
-  };
-}
+function cors() { return {
+  "Access-Control-Allow-Origin": "*", // relax while we debug; can lock to domain later
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+};}
+function text(code, body){ return { statusCode: code, headers: cors(), body }; }
+function json(code, obj){ return { statusCode: code, headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" }, body: JSON.stringify(obj) }; }
