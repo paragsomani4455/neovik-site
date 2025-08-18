@@ -1,4 +1,4 @@
-// netlify/functions/generate-outline.js  (v4)
+// netlify/functions/generate-outline.js  (v5 with auto-compact retry)
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: cors(), body: "" };
   if (event.httpMethod !== "POST")   return { statusCode: 405, headers: cors(), body: "Method Not Allowed" };
@@ -17,39 +17,25 @@ export async function handler(event) {
 
   const schema = `{
     "deck": {
-      "meta": {
-        "startup": "<string>",
-        "industry": "<string>",
-        "stage": "seed",
-        "tone": "<crisp|narrative|technical>",
-        "prompt_version": "v1",
-        "created_at": "<ISO8601>"
-      },
-      "slides": [{
-        "id": 1,
-        "title": "<Title Case>",
-        "purpose": "<investor question this slide answers>",
-        "bullets": ["<12–20 words>", "<3–5 bullets total>"],
-        "visual": "<suggested chart/mock/layout>",
-        "proof_needed": ["<evidence item 1>", "<2–4 items>"]
-      }],
-      "proof_todos": ["<global TODOs founders must supply>"],
-      "warnings": ["<any caveats or missing info>"]
+      "meta": {"startup":"<string>","industry":"<string>","stage":"seed","tone":"<crisp|narrative|technical>","prompt_version":"v1","created_at":"<ISO8601>"},
+      "slides": [{"id":1,"title":"<Title Case>","purpose":"<investor question>","bullets":["<12–18 words>"],"visual":"<layout>","proof_needed":["<evidence>"]}],
+      "proof_todos": ["<global TODOs>"],
+      "warnings": ["<caveats>"]
     }
   }`;
 
-  const system = `
+  const baseSystem = `
 You are “Neovik Deck Co-Author”: a seed-stage investor-grade deck outliner.
 Return ONLY valid JSON per the schema. No prose, no markdown.
 - 10–12 slides. Each slide answers a real investor question.
-- 3–5 bullets/slide (12–20 words each). No fluff.
-- Do NOT invent numbers or names. If missing, add precise proof_needed and global proof_todos.
+- 3–5 bullets/slide (12–18 words each). No fluff.
+- Do NOT invent numbers/names. If missing, add precise proof_needed and global proof_todos.
 - Seed bar: prove pull, wedge, path to revenue in 12–18 months.
-- Titles in Title Case. Visuals are concrete (e.g., "cohort chart").
+- Titles in Title Case. Visuals are concrete (e.g., "cohort chart", "bottom-up calc table").
 - Keep tone crisp (McKinsey/Goldman). All schema fields must exist.
 `;
 
-  const user = `
+  const founderInput = `
 SCHEMA:
 ${schema}
 
@@ -77,32 +63,22 @@ Return ONLY valid JSON.
 `;
 
   try {
-    const resp = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        instructions: system,
-        input: user,
-        // Structured output (new Responses API shape)
-        text: { format: { type: "json_object" } },
-        max_output_tokens: 1100
-      })
-    });
-
-    if (!resp.ok) {
-      const msg = await resp.text();
-      return { statusCode: 502, headers: cors(), body: `Upstream error: ${msg}` };
+    // Try full version first (higher token cap)
+    let data = await call(model, baseSystem, founderInput, 2000);
+    if (data.status === "incomplete" && data.incomplete_details?.reason === "max_output_tokens") {
+      // Retry compact version
+      const compactSystem = baseSystem + `
+COMPACT MODE:
+- Hard cap 10–11 slides.
+- 3–4 bullets per slide, tighter phrasing.
+- Prefer warnings/proof_todos over long bullets.
+`;
+      data = await call(model, compactSystem, founderInput, 1400);
     }
 
-    const data = await resp.json();
     const text = extractText(data);
     if (!text) {
-      return {
-        statusCode: 502,
-        headers: cors(),
-        body: "Upstream (no text): " + JSON.stringify(data).slice(0, 1500)
-      };
+      return { statusCode: 502, headers: cors(), body: "Upstream (no text): " + JSON.stringify(data).slice(0, 1500) };
     }
 
     let json;
@@ -111,14 +87,29 @@ Return ONLY valid JSON.
 
     if (json.deck?.meta) json.deck.meta.created_at = new Date().toISOString();
 
-    return {
-      statusCode: 200,
-      headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" },
-      body: JSON.stringify(json)
-    };
+    return { statusCode: 200, headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" }, body: JSON.stringify(json) };
   } catch (e) {
     return { statusCode: 500, headers: cors(), body: `Server error: ${e.message}` };
   }
+}
+
+async function call(model, instructions, input, maxTokens){
+  const resp = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      instructions,
+      input,
+      text: { format: { type: "json_object" } },
+      max_output_tokens: maxTokens
+    })
+  });
+  if (!resp.ok) {
+    const msg = await resp.text();
+    throw new Error(`Upstream error: ${msg}`);
+  }
+  return await resp.json();
 }
 
 function extractText(d) {
