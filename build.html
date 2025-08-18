@@ -1,117 +1,141 @@
-// netlify/functions/generate-outline.js
-export async function handler(event) {
-  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: cors(), body: "" };
-  if (event.httpMethod !== "POST") return { statusCode: 405, headers: cors(), body: "Method Not Allowed" };
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Build • Neovik Advisors</title>
+  <link rel="stylesheet" href="/style.css?v=9">
+  <style>
+    body{background:#0b0b0f;color:#eaeaf0;font-family:system-ui,Segoe UI,Inter,Arial,sans-serif}
+    .wrap{max-width:960px;margin:40px auto;padding:0 16px}
+    .card{background:rgba(255,255,255,.05);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px}
+    label{display:block;margin-top:12px;font-size:14px;opacity:.9}
+    input,textarea,select{width:100%;margin-top:6px;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#11121a;color:#fff}
+    textarea{min-height:72px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .btn{display:inline-block;margin-top:16px;padding:12px 16px;border-radius:12px;border:1px solid #5b31a4;background:#6739B7;color:#fff;cursor:pointer}
+    .muted{opacity:.75}
+    pre{white-space:pre-wrap;background:#0f1018;border:1px solid rgba(255,255,255,.08);padding:16px;border-radius:12px;max-height:480px;overflow:auto}
+    .ok{color:#7CF5A1}.err{color:#ff8f8f}
+  </style>
+</head>
+<body>
+<header class="wrap" style="display:flex;align-items:center;gap:12px;">
+  <img src="/neovik-logo.png" alt="Neovik Advisors" width="36" height="36">
+  <strong>Neovik Advisors</strong>
+  <a href="/" style="margin-left:auto" class="muted">Home</a>
+</header>
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.MODEL || "gpt-5-mini";
-  if (!apiKey) return { statusCode: 500, headers: cors(), body: "Missing OPENAI_API_KEY" };
+<main class="wrap">
+  <h1>Generate Seed-Grade Outline</h1>
+  <p class="muted">Fill the basics → click Generate → get a 12-slide outline + proof TODOs.</p>
 
-  let input;
-  try { input = JSON.parse(event.body || "{}"); } catch { return { statusCode: 400, headers: cors(), body: "Bad JSON" }; }
+  <div class="card">
+    <div class="row">
+      <div><label>Startup name<input id="startup" required></label></div>
+      <div><label>One-liner<input id="one_liner" placeholder="What you do in one sentence" required></label></div>
+    </div>
 
-  const required = ["startup","one_liner","industry","target_user","problem","solution"];
-  const missing = required.filter(k => !String(input[k]||"").trim());
-  if (missing.length) return { statusCode: 400, headers: cors(), body: `Missing: ${missing.join(", ")}` };
+    <div class="row">
+      <div><label>Industry
+        <select id="industry">
+          <option>SaaS</option><option>Fintech</option><option>Consumer</option><option>Health</option><option>Other</option>
+        </select>
+      </label></div>
+      <div><label>Target user<input id="target_user" placeholder="Who feels the pain?" required></label></div>
+    </div>
 
-  const schema = `{
-    "deck": {
-      "meta": {
-        "startup": "<string>",
-        "industry": "<string>",
-        "stage": "seed",
-        "tone": "<crisp|narrative|technical>",
-        "prompt_version": "v1",
-        "created_at": "<ISO8601>"
-      },
-      "slides": [
-        {
-          "id": 1,
-          "title": "<Title Case>",
-          "purpose": "<investor question this slide answers>",
-          "bullets": ["<12–20 words>", "<3–5 bullets total>"],
-          "visual": "<suggested chart/mock/layout>",
-          "proof_needed": ["<evidence item 1>", "<2–4 items>"]
-        }
-      ],
-      "proof_todos": ["<global TODOs founders must supply>"],
-      "warnings": ["<any caveats or missing info>"]
-    }
-  }`;
+    <label>Problem (2–3 lines)<textarea id="problem" required></textarea></label>
+    <label>Solution / product (2–3 lines)<textarea id="solution" required></textarea></label>
 
-  const system = `
-You are “Neovik Deck Co-Author”: a seed-stage investor-grade deck outliner.
-Return ONLY valid JSON matching the provided schema. No prose, no markdown.
-Rules:
-- 12 slides max, 10–12 ideal. Each slide answers a real investor question.
-- 3–5 bullets/slide, each 12–20 words. No fluff, no buzzword stacking.
-- Do NOT invent numbers or names. If data is missing, add precise proof_needed and a global proof_todos entry (e.g., "Bottom-up TAM: price × buyer count with cited source").
-- Seed bar: prove pull, wedge, path to revenue in 12–18 months. Design secondary to evidence.
-- Titles in Title Case. Visual suggests a concrete layout (e.g., “cohort chart”, “bottom-up calc table”).
-- Keep language crisp and McKinsey/Goldman tone.
-- Schema fields must be present even if arrays are empty.
-`;
+    <div class="row">
+      <label>GTM (2 lines)<textarea id="gtm"></textarea></label>
+      <label>Business model (2 lines)<textarea id="business_model"></textarea></label>
+    </div>
 
-  const user = `
-SCHEMA:
-${schema}
+    <div class="row">
+      <label>Traction (optional)<textarea id="traction"></textarea></label>
+      <label>Competition (names)<textarea id="competition"></textarea></label>
+    </div>
 
-FOUNDER_INPUT:
-startup: ${input.startup}
-one_liner: ${input.one_liner}
-industry: ${input.industry}
-stage: seed
-target_user: ${input.target_user}
-problem: ${input.problem}
-solution: ${input.solution}
-gtm: ${input.gtm || ""}
-business_model: ${input.business_model || ""}
-traction: ${input.traction || ""}
-competition: ${input.competition || ""}
-moat: ${input.moat || ""}
-ask_use: ${input.ask_use || ""}
-tone: ${input.tone || "crisp"}
+    <div class="row">
+      <label>Moat / edge (1–2 lines)<textarea id="moat"></textarea></label>
+      <label>Ask &amp; use of funds<textarea id="ask_use"></textarea></label>
+    </div>
 
-TASK:
-Using the SCHEMA and rules, produce a 12-slide outline for seed investors.
-Each slide: title, purpose, 3–5 bullets, visual, and 2–4 proof_needed.
-Aggregate the most critical missing evidence into proof_todos (max 8).
-Return ONLY valid JSON.
-`;
+    <div><label>Tone
+      <select id="tone"><option>crisp</option><option>narrative</option><option>technical</option></select>
+    </label></div>
+
+    <button id="go" class="btn">Generate</button>
+    <span id="status" class="muted"></span>
+  </div>
+
+  <div id="out" style="margin-top:20px"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const endpoint = "/.netlify/functions/generate-outline";
+$("go").onclick = async () => {
+  $("status").innerText = "Generating…";
+  $("go").disabled = true;
+
+  const payload = {
+    startup: $("startup").value, one_liner: $("one_liner").value,
+    industry: $("industry").value, target_user: $("target_user").value,
+    problem: $("problem").value, solution: $("solution").value,
+    gtm: $("gtm").value, business_model: $("business_model").value,
+    traction: $("traction").value, competition: $("competition").value,
+    moat: $("moat").value, ask_use: $("ask_use").value,
+    tone: $("tone").value
+  };
 
   try {
-    const resp = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        input: [
-          { role: "system", content: [{ type: "text", text: system }] },
-          { role: "user",   content: [{ type: "input_text", text: user }] }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.4,
-        max_output_tokens: 1100
-      })
+    const res = await fetch(endpoint, {
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body: JSON.stringify(payload)
     });
-
-    if (!resp.ok) return { statusCode: 502, headers: cors(), body: `Upstream error: ${await resp.text()}` };
-
-    const data = await resp.json();
-    const text = data?.output?.[0]?.content?.[0]?.text || data?.output_text || "";
-    if (!text) return { statusCode: 502, headers: cors(), body: "Empty model output" };
-
-    let json;
-    try { json = JSON.parse(text); } catch { return { statusCode: 502, headers: cors(), body: "Model did not return valid JSON" }; }
-    if (json.deck?.meta) json.deck.meta.created_at = new Date().toISOString();
-
-    return { statusCode: 200, headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" }, body: JSON.stringify(json) };
+    const text = await res.text();
+    if (!res.ok) throw new Error(text.slice(0,300));
+    const data = JSON.parse(text);
+    render(data);
+    $("status").innerHTML = "<span class='ok'>Done.</span>";
   } catch (e) {
-    return { statusCode: 500, headers: cors(), body: `Server error: ${e.message}` };
+    $("out").innerHTML = "<pre class='err'>"+e.message+"</pre>";
+    $("status").innerHTML = "<span class='err'>Failed.</span>";
+  } finally {
+    $("go").disabled = false;
   }
+};
+
+function render(data){
+  const deck = data.deck || {};
+  const slides = deck.slides || [];
+  let html = `<div class="card"><h2>Outline for ${escapeHtml(deck?.meta?.startup||"")}</h2>`;
+  slides.forEach(s=>{
+    html += `<h3>${escapeHtml(s.title||"")}</h3><p class="muted">${escapeHtml(s.purpose||"")}</p><ul>`;
+    (s.bullets||[]).forEach(b=> html+=`<li>${escapeHtml(b)}</li>`);
+    html += `</ul><p class="muted">Visual: ${escapeHtml(s.visual||"")}</p>`;
+  });
+  if (deck.proof_todos?.length){
+    html += `<h3>Proof TODOs</h3><ul>` + deck.proof_todos.map(t=>`<li>${escapeHtml(t)}</li>`).join("") + `</ul>`;
+  }
+  if (deck.warnings?.length){
+    html += `<h3>Warnings</h3><ul>` + deck.warnings.map(t=>`<li>${escapeHtml(t)}</li>`).join("") + `</ul>`;
+  }
+  html += `<button class="btn" onclick='downloadJson(${JSON.stringify(JSON.stringify(data))})'>Download JSON</button></div>`;
+  $("out").innerHTML = html;
 }
-function cors(){ return {
-  "Access-Control-Allow-Origin": "https://theneovik.com",
-  "Access-Control-Allow-Methods": "POST,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
-};}
+function downloadJson(s){
+  const blob = new Blob([JSON.parse(s)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "neovik_deck.json";
+  a.click();
+}
+function escapeHtml(x){return (x||"").replace(/[&<>"]/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
+</script>
+</body>
+</html>
