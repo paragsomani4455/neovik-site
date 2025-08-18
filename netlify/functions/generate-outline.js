@@ -1,4 +1,4 @@
-// netlify/functions/generate-outline.js
+// netlify/functions/generate-outline.js  (v2)
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: cors(), body: "" };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: cors(), body: "Method Not Allowed" };
@@ -87,9 +87,10 @@ Return ONLY valid JSON.
         model,
         input: [
           { role: "system", content: [{ type: "text", text: system }] },
-          { role: "user",   content: [{ type: "input_text", text: user }] }
+          { role: "user",   content: [{ type: "text", text: user }] }
         ],
-        response_format: { type: "json_object" },
+        // NEW: response_format moved under "text.format"
+        text: { format: "json" },
         temperature: 0.4,
         max_output_tokens: 1100
       })
@@ -98,20 +99,27 @@ Return ONLY valid JSON.
     if (!resp.ok) return { statusCode: 502, headers: cors(), body: `Upstream error: ${await resp.text()}` };
 
     const data = await resp.json();
-    const text = data?.output?.[0]?.content?.[0]?.text || data?.output_text || "";
+    const text = data?.output_text || data?.output?.[0]?.content?.[0]?.text || "";
     if (!text) return { statusCode: 502, headers: cors(), body: "Empty model output" };
 
     let json;
     try { json = JSON.parse(text); } catch { return { statusCode: 502, headers: cors(), body: "Model did not return valid JSON" }; }
     if (json.deck?.meta) json.deck.meta.created_at = new Date().toISOString();
 
-    return { statusCode: 200, headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" }, body: JSON.stringify(json) };
+    return {
+      statusCode: 200,
+      headers: { ...cors(), "content-type": "application/json", "cache-control": "no-store" },
+      body: JSON.stringify(json)
+    };
   } catch (e) {
     return { statusCode: 500, headers: cors(), body: `Server error: ${e.message}` };
   }
 }
-function cors(){ return {
-  "Access-Control-Allow-Origin": "https://theneovik.com",
-  "Access-Control-Allow-Methods": "POST,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
-};}
+
+function cors(){
+  return {
+    "Access-Control-Allow-Origin": "https://theneovik.com",
+    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+}
